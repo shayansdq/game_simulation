@@ -2,18 +2,19 @@ version: "3.8"
 
 services:
   postgres:
-    container_name: postgres
-    command: sh -c "redis-server --requirepass $$REDIS_PASSWORD"
-    restart: always
+    container_name: postgres_container
     image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      PGDATA: /data/postgres
+    volumes:
+      - postgres:/data/postgres
     ports:
       - "5432:5432"
     networks:
       - main
-    env_file:
-      - .env
-    volumes:
-      - ./postgres_data:/data
+    restart: unless-stopped
 
   api:
     container_name: api
