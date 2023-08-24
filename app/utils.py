@@ -125,7 +125,6 @@ async def start_game(db: AsyncSession):
         await create_new_game(db)
 
 
-
 async def return_created_board_game(db: AsyncSession):
     board_game_statement = select(models.BoardGame).filter(models.BoardGame.finished == False)
     board_game_result = await db.execute(board_game_statement)
@@ -153,6 +152,7 @@ async def do_action(data, db: AsyncSession):
     player_action: PlayerActionEnum = data.action
     robot_position: tuple = robot.x_position, robot.y_position
     robots_positions, dinosaurs_positions, objects_positions, killed_dinosaurs = await get_object_positions(db)
+    print('before', robot_position)
     check_action = await check_banned_actions(robot_position, player_action, objects_positions)
     if not check_action:
         raise HTTPException(status_code=403,
@@ -164,17 +164,37 @@ async def do_action(data, db: AsyncSession):
             'new_robot_position': (robot.x_position, robot.y_position)
         }
         if player_action == PlayerActionEnum.UP:
-            robot.y_position += 1
-            return move_robot_response
+            new_y = robot.y_position + 1
+            robot.y_position = new_y
+            return {
+                'player': player.id,
+                'robot': robot.id,
+                'new_robot_position': (robot.x_position, new_y)
+            }
         if player_action == PlayerActionEnum.DOWN:
-            robot.y_position -= 1
-            return move_robot_response
+            new_y = robot.y_position - 1
+            robot.y_position = new_y
+            return {
+                'player': player.id,
+                'robot': robot.id,
+                'new_robot_position': (robot.x_position, new_y)
+            }
         if player_action == PlayerActionEnum.RIGHT:
-            robot.x_position += 1
-            return move_robot_response
+            new_x = robot.x_position + 1
+            robot.x_position = new_x
+            return {
+                'player': player.id,
+                'robot': robot.id,
+                'new_robot_position': (new_x, robot.y_position)
+            }
         if player_action == PlayerActionEnum.LEFT:
-            robot.x_position -= 1
-            return move_robot_response
+            new_x = robot.x_position - 1
+            robot.x_position = new_x
+            return {
+                'player': player.id,
+                'robot': robot.id,
+                'new_robot_position': (new_x, robot.y_position)
+            }
         if player_action == PlayerActionEnum.KILL:
             killed_dinosaurs_x = list(filter(lambda x: x[0] == robot.x_position, dinosaurs_positions))
             killed_dinosaurs_y = list(filter(lambda x: x[1] == robot.y_position, dinosaurs_positions))
@@ -197,7 +217,7 @@ async def do_action(data, db: AsyncSession):
                     return {
                         'player': player.id,
                         'killed_dinosaurs': len(efficient_killed_dinosaurs),
-                        'new_point': len(efficient_killed_dinosaurs),
+                        'new_point': player.point,
                         'message': 'Congrats, You finished the game...'
                     }
             return {
@@ -238,24 +258,29 @@ async def check_banned_actions(r_position: tuple,
         if x == 50:
             return False
         new_pos = (x + 1, y)
-        if new_pos in objects_positions:
+        if new_pos in objects_positions[0]:
             return False
     if PlayerActionEnum.LEFT == player_action:
         if x == 1:
             return False
+        print('pos b: ', x, y)
         new_pos = (x - 1, y)
-        if new_pos in objects_positions:
+        print('pos a: ', new_pos)
+        if new_pos in objects_positions[0]:
             return False
     if PlayerActionEnum.UP == player_action:
         if y == 50:
             return False
         new_pos = (x, y + 1)
-        if new_pos in objects_positions:
+        if new_pos in objects_positions[0]:
             return False
     if PlayerActionEnum.DOWN == player_action:
+        print('*' * 20)
         if y == 1:
             return False
         new_pos = (x, y - 1)
-        if new_pos in objects_positions:
+        print(new_pos)
+        print(objects_positions)
+        if new_pos in objects_positions[0]:
             return False
     return True
